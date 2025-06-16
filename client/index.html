@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<script src="/socket.io/socket.io.js"></script>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Explorer - Advanced Rendering Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h3>🚀 Space Explorer</h3>
+            <div class="technique">
+                <strong>Ray Casting:</strong> Planet scanning system
+            </div>
+            <div class="technique">
+                <strong>Texture Mapping:</strong> Planet surfaces & space objects
+            </div>
+            <div class="technique">
+                <strong>Polygon Shading:</strong> Phong shading on all objects
+            </div>
+        </div>
+        
+        <div id="techniqueToggles">
+            <h3>🔧 Rendering Techniques</h3>
+            <div class="toggle-item active" id="rayCastingToggle">
+                <span>Ray Casting (I)</span>
+                <span class="toggle-status status-on">ON</span>
+            </div>
+            <div class="toggle-item active" id="textureMappingToggle">
+                <span>Texture Mapping (O)</span>
+                <span class="toggle-status status-on">ON</span>
+            </div>
+            <div class="toggle-item active" id="polygonShadingToggle">
+                <span>Polygon Shading (P)</span>
+                <span class="toggle-status status-on">ON</span>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <strong>Controls:</strong><br>
+            WASD - Move<br>
+            Mouse - Look around<br>
+            Click - Scan planet<br>
+            Space - Toggle animation<br>
+            <strong style="color: #ffaa00;">I/O/P - Toggle techniques</strong>
+        </div>
+        
+        <div id="crosshair"></div>
+        
+        <div id="scanResult">
+            <div id="scanContent"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

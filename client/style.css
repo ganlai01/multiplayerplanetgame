@@ -1,0 +1,139 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    color: #00ff00;
+}
+
+#container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+    max-width: 300px;
+}
+
+#controls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+}
+
+#techniqueToggles {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border: 1px solid #00ff00;
+    border-radius: 5px;
+    min-width: 250px;
+}
+
+.toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 8px 0;
+    padding: 5px;
+    border-left: 3px solid #666;
+    padding-left: 10px;
+}
+
+.toggle-item.active {
+    border-left-color: #00ff00;
+    color: #00ff00;
+}
+
+.toggle-item.inactive {
+    border-left-color: #ff4444;
+    color: #ff4444;
+}
+
+.toggle-status {
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.status-on {
+    background: #004400;
+    color: #00ff00;
+}
+
+.status-off {
+    background: #440000;
+    color: #ff4444;
+}
+
+.technique {
+    margin: 10px 0;
+    padding: 5px;
+    border-left: 3px solid #00ff00;
+    padding-left: 10px;
+}
+
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+#crosshair::before,
+#crosshair::after {
+    content: '';
+    position: absolute;
+    background: #00ff00;
+}
+
+#crosshair::before {
+    width: 2px;
+    height: 20px;
+    left: 9px;
+    top: 0;
+}
+
+#crosshair::after {
+    width: 20px;
+    height: 2px;
+    left: 0;
+    top: 9px;
+}
+
+#scanResult {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 10px;
+    border: 1px solid #ffaa00;
+    border-radius: 5px;
+    color: #ffaa00;
+    min-width: 200px;
+    display: none;
+}
