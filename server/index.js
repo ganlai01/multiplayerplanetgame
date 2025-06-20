@@ -4,6 +4,8 @@ const http = require("http");
 const path = require("path");
 
 const app = express();
+app.use(express.static(path.join(__dirname, 'client')));
+app.use('/textures', express.static(path.join(__dirname, 'textures')));
 const server = http.createServer(app);
 const io = socketio(server, {
   cors: {
