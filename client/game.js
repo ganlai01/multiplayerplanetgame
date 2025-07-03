@@ -31,6 +31,19 @@ let currentPuzzlePlanet = null;
 let completedPuzzles = new Set();
 let originalMaterials = new Map();
 let basicMaterials = new Map();
+let moveSpeed = 10;
+let moveVelocity = new THREE.Vector3();
+let moveAcceleration = 30;
+let moveDamping = 0.2;
+let clock = new THREE.Clock();
+
+let cameraRotation = {
+  yaw: 0,   
+  pitch: 0,  
+  sensitivity: 0.002,
+  maxPitch: Math.PI / 2.1, 
+  minPitch: -Math.PI / 2.1
+};
 
 // Planet puzzles data
 const planetPuzzles = {
@@ -216,14 +229,12 @@ function startGame() {
 }
 
 function restartGame() {
-  // Reset local game state
   gameState = {
     planetsScanned: 0,
     completedPlanets: [],
   };
   completedPuzzles.clear();
 
-  // Clean up Three.js scene
   if (scene) {
     while (scene.children.length > 0) {
       scene.remove(scene.children[0]);
@@ -237,19 +248,16 @@ function restartGame() {
     }
   }
 
-  // Reset UI
   document.getElementById("endScreen").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
   document.getElementById("playerNameInput").value = "";
   document.getElementById("playerNameInput").focus();
 
-  // Notify server we're leaving the game
   if (gameId) {
     socket.emit("leaveGame", { gameId });
     gameId = null;
   }
 
-  // Reset player info
   opponentName = null;
   opponent = null;
 }
@@ -265,6 +273,10 @@ function initThreeJS() {
     1000
   );
   camera.position.set(0, 10, 50);
+
+  cameraRotation.yaw = 0;
+  cameraRotation.pitch = 0;
+  camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -377,7 +389,6 @@ function createPlanets() {
   planetData.forEach((data, index) => {
     const geometry = new THREE.SphereGeometry(data.size, 32, 32);
     
-    // Load texture
     const texture = textureLoader.load(data.texture);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -533,14 +544,21 @@ function onMouseMove(event) {
 }
 
 function onMouseLook(event) {
-  if (document.pointerLockElement === renderer.domElement) {
-    const sensitivity = 0.002;
-    camera.rotation.y -= event.movementX * sensitivity;
-    camera.rotation.x -= event.movementY * sensitivity;
-    camera.rotation.x = Math.max(
-      -Math.PI / 2,
-      Math.min(Math.PI / 2, camera.rotation.x)
+  if (document.pointerLockElement === renderer.domElement && !isPuzzleOpen()) {
+    cameraRotation.yaw -= event.movementX * cameraRotation.sensitivity;
+    cameraRotation.pitch -= event.movementY * cameraRotation.sensitivity;
+    
+    cameraRotation.pitch = Math.max(
+      cameraRotation.minPitch,
+      Math.min(cameraRotation.maxPitch, cameraRotation.pitch)
     );
+    
+    camera.quaternion.setFromEuler(new THREE.Euler(
+      cameraRotation.pitch,
+      cameraRotation.yaw,
+      0,
+      'YXZ' 
+    ));
   }
 }
 
@@ -552,7 +570,7 @@ function onMouseClick() {
   } else {
     document.getElementById("scanContent").innerHTML = `
             <h4>🚫 SCAN DISABLED</h4>
-            <p>Ray casting is currently disabled.<br>Press 'I' to enable planet scanning.</p>
+            <p>Ray casting is disabled.<br>Press 'I' to enable planet scanning.</p>
         `;
     document.getElementById("scanResult").style.display = "block";
     setTimeout(() => {
@@ -612,36 +630,48 @@ function onKeyUp(event) {
   keys[event.code] = false;
 }
 
-function updateMovement() {
-  // Don't move if puzzle is open
+function updateMovement(deltaTime) {
   if (isPuzzleOpen()) return;
 
-  moveDirection.set(0, 0, 0);
+  const moveDirection = new THREE.Vector3();
 
-  if (keys["KeyW"]) moveDirection.z -= 1;
-  if (keys["KeyS"]) moveDirection.z += 1;
-  if (keys["KeyA"]) moveDirection.x -= 1;
-  if (keys["KeyD"]) moveDirection.x += 1;
+  if (keys["KeyW"]) moveDirection.z += 1;
+  if (keys["KeyS"]) moveDirection.z -= 1;
+  if (keys["KeyA"]) moveDirection.x += 1;
+  if (keys["KeyD"]) moveDirection.x -= 1;
+  if (keys["KeyQ"]) moveDirection.y -= 1;
+  if (keys["KeyE"]) moveDirection.y += 1;
 
   if (moveDirection.length() > 0) {
     moveDirection.normalize();
-
-    const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-
-    const right = new THREE.Vector3();
-    right.crossVectors(cameraDirection, camera.up).normalize();
-
-    const forward = cameraDirection.clone();
-    forward.y = 0;
-    forward.normalize();
-
-    const movement = new THREE.Vector3();
-    movement.addScaledVector(forward, -moveDirection.z * 0.5);
-    movement.addScaledVector(right, moveDirection.x * 0.5);
-
-    camera.position.add(movement);
   }
+
+  const cameraDirection = new THREE.Vector3();
+  camera.getWorldDirection(cameraDirection);
+  cameraDirection.y = 0; // Keep movement horizontal (optional)
+  cameraDirection.normalize();
+
+  const cameraRight = new THREE.Vector3();
+  cameraRight.crossVectors(camera.up, cameraDirection).normalize();
+
+  const targetVelocity = new THREE.Vector3();
+  targetVelocity.addScaledVector(cameraDirection, moveDirection.z * moveSpeed);
+  targetVelocity.addScaledVector(cameraRight, moveDirection.x * moveSpeed);
+  targetVelocity.addScaledVector(camera.up, moveDirection.y * moveSpeed);
+
+  const acceleration = moveAcceleration * deltaTime;
+  moveVelocity.x = THREE.MathUtils.lerp(moveVelocity.x, targetVelocity.x, acceleration);
+  moveVelocity.y = THREE.MathUtils.lerp(moveVelocity.y, targetVelocity.y, acceleration);
+  moveVelocity.z = THREE.MathUtils.lerp(moveVelocity.z, targetVelocity.z, acceleration);
+
+  if (moveDirection.length() === 0) {
+    moveVelocity.multiplyScalar(1 - moveDamping * deltaTime);
+    if (moveVelocity.length() < 0.01) {
+      moveVelocity.set(0, 0, 0);
+    }
+  }
+
+  camera.position.addScaledVector(moveVelocity, deltaTime);
 }
 
 function toggleRayCasting() {
@@ -737,9 +767,11 @@ function onWindowResize() {
 }
 
 function animate() {
+  const deltaTime = Math.min(clock.getDelta(), 0.1);
+
   requestAnimationFrame(animate);
 
-  updateMovement();
+  updateMovement(deltaTime);
 
   if (gameId && isPointerLocked) {
     socket.emit("playerMovement", {
@@ -793,11 +825,9 @@ function createPuzzleGrid(puzzleData) {
 
   const { rows, cols } = puzzleData.gridSize;
 
-  // Set the grid template columns
   grid.style.gridTemplateColumns = `repeat(${cols}, 35px)`;
   grid.style.gridTemplateRows = `repeat(${rows}, 35px)`;
 
-  // Create cells
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const cell = document.createElement("div");
@@ -806,7 +836,6 @@ function createPuzzleGrid(puzzleData) {
     }
   }
 
-  // Fill in the words
   Object.entries(puzzleData.words).forEach(([wordKey, wordData]) => {
     const { word, start, length } = wordData;
     const isAcross = wordKey.includes("across");
@@ -994,13 +1023,13 @@ function createOpponent() {
 function updateOpponentProgress(progress) {
   document.getElementById(
     "opponentProgress"
-  ).textContent = `Opponent progress: ${progress.planetsScanned}/2 planets`;
+  ).textContent = `Opponent progress: ${progress.planetsScanned}/3 planets`;
 }
 
 function updatePlayerProgress() {
   document.getElementById(
     "playerProgress"
-  ).textContent = `Your progress: ${gameState.planetsScanned}/2 planets`;
+  ).textContent = `Your progress: ${gameState.planetsScanned}/3 planets`;
 
   socket.emit("progressUpdate", {
     gameId: gameId,
@@ -1052,30 +1081,24 @@ function showEndScreen(winner, data) {
 }
 
 function restartGame() {
-  // Reset game state
   gameState = {
     planetsScanned: 0,
     completedPlanets: [],
   };
 
-  // Clear completed puzzles
   completedPuzzles.clear();
 
-  // Reset Three.js scene
   if (scene) {
-    // Remove all objects from scene
     while (scene.children.length > 0) {
       scene.remove(scene.children[0]);
     }
 
-    // Clean up renderer
     if (renderer) {
       renderer.dispose();
       document.getElementById("container").removeChild(renderer.domElement);
     }
   }
 
-  // Reset opponent
   opponent = null;
 
   // Hide end screen and show start screen
@@ -1092,7 +1115,6 @@ function restartGame() {
   document.getElementById("playerNameInput").value = "";
   document.getElementById("playerNameInput").focus();
 
-  // Leave current game if exists
   if (gameId) {
     socket.emit("leaveGame", { gameId });
     gameId = null;
