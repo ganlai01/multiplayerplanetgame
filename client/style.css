@@ -126,8 +126,8 @@ body {
 
 #scanResult {
   position: absolute;
-  top: 60px;
-  right: 10px;
+  top: 10px;
+  right: 310px;
   z-index: 100;
   background: rgba(0, 0, 0, 0.9);
   padding: 10px;
@@ -140,7 +140,7 @@ body {
 
 #playerInfo {
   position: absolute;
-  top: 10px;
+  top: 220px;
   right: 10px;
   z-index: 100;
   background: rgba(0, 0, 0, 0.8);
@@ -305,4 +305,3 @@ body {
   border-left: 3px solid #00ff00;
   padding-left: 10px;
 }
-
