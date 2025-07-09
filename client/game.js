@@ -18,6 +18,7 @@ let moveDirection = new THREE.Vector3();
 let keys = {};
 let isPointerLocked = false;
 let opponent = null;
+let playerSphere = null;
 
 // Rendering techniques
 let techniques = {
@@ -38,11 +39,11 @@ let moveDamping = 0.2;
 let clock = new THREE.Clock();
 
 let cameraRotation = {
-  yaw: 0,   
-  pitch: 0,  
+  yaw: 0,
+  pitch: 0,
   sensitivity: 0.002,
-  maxPitch: Math.PI / 2.1, 
-  minPitch: -Math.PI / 2.1
+  maxPitch: Math.PI / 2.1,
+  minPitch: -Math.PI / 2.1,
 };
 
 // Planet puzzles data
@@ -194,9 +195,28 @@ function setupSocket() {
   });
 
   socket.on("playerMoved", (data) => {
-    if (opponent) {
-      opponent.position.set(data.position.x, data.position.y, data.position.z);
-      opponent.rotation.set(data.rotation.x, data.rotation.y, data.rotation.z);
+    if (opponent && data.playerId !== playerId) {
+      // Force opponent visibility
+      opponent.visible = true;
+
+      // Smooth position update
+      if (data.position) {
+        opponent.position.lerp(
+          new THREE.Vector3(data.position.x, data.position.y, data.position.z),
+          0.2
+        );
+      }
+
+      // Smooth rotation update
+      if (data.rotation) {
+        const targetQuaternion = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(data.rotation.x, data.rotation.y, data.rotation.z)
+        );
+        opponent.quaternion.slerp(targetQuaternion, 0.2);
+      }
+
+      // Add subtle animation
+      opponent.scale.set(1, 1.5 + Math.sin(Date.now() * 0.005) * 0.2, 1);
     }
   });
 
@@ -229,12 +249,14 @@ function startGame() {
 }
 
 function restartGame() {
+  // Reset local game state
   gameState = {
     planetsScanned: 0,
     completedPlanets: [],
   };
   completedPuzzles.clear();
 
+  // Clean up Three.js scene
   if (scene) {
     while (scene.children.length > 0) {
       scene.remove(scene.children[0]);
@@ -248,18 +270,22 @@ function restartGame() {
     }
   }
 
+  // Reset UI
   document.getElementById("endScreen").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
   document.getElementById("playerNameInput").value = "";
   document.getElementById("playerNameInput").focus();
 
+  // Notify server we're leaving the game
   if (gameId) {
     socket.emit("leaveGame", { gameId });
     gameId = null;
   }
 
+  // Reset player info
   opponentName = null;
   opponent = null;
+  playerSphere = null;
 }
 
 function initThreeJS() {
@@ -276,7 +302,7 @@ function initThreeJS() {
 
   cameraRotation.yaw = 0;
   cameraRotation.pitch = 0;
-  camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, 'YXZ'));
+  camera.quaternion.setFromEuler(new THREE.Euler(0, 0, 0, "YXZ"));
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -293,6 +319,11 @@ function initThreeJS() {
   createAsteroids();
   createLighting();
   createOpponent();
+  if (opponent) {
+    opponent.position.set(10, 10, 40);
+    opponent.rotation.set(0, Math.PI, 0);
+    opponent.visible = true;
+  }
 
   setupEventListeners();
   animate();
@@ -324,12 +355,12 @@ function createSpaceEnvironment() {
 function createPlanets() {
   // Array of texture paths
   const planetTextures = [
-    'textures/planet1.jpg',
-    'textures/planet2.jpg',
-    'textures/planet3.jpg',
-    'textures/planet4.jpg',
-    'textures/planet5.jpg',
-    'textures/planet6.jpg'
+    "textures/planet1.jpg",
+    "textures/planet2.jpg",
+    "textures/planet3.jpg",
+    "textures/planet4.jpg",
+    "textures/planet5.jpg",
+    "textures/planet6.jpg",
   ];
 
   const planetData = [
@@ -339,7 +370,7 @@ function createPlanets() {
       size: 8,
       distance: 60,
       resources: "Water, Oxygen",
-      threat: "Low"
+      threat: "Low",
     },
     {
       name: "Mars-Alpha",
@@ -347,7 +378,7 @@ function createPlanets() {
       size: 6,
       distance: 100,
       resources: "Iron, Minerals",
-      threat: "Medium"
+      threat: "Medium",
     },
     {
       name: "Europa-9",
@@ -355,7 +386,7 @@ function createPlanets() {
       size: 5,
       distance: 140,
       resources: "Methane, Ice",
-      threat: "High"
+      threat: "High",
     },
     {
       name: "Titan-X",
@@ -363,7 +394,7 @@ function createPlanets() {
       size: 10,
       distance: 200,
       resources: "Rare Metals",
-      threat: "Extreme"
+      threat: "Extreme",
     },
     {
       name: "Render-7",
@@ -371,7 +402,7 @@ function createPlanets() {
       size: 7,
       distance: 160,
       resources: "Graphics, Light",
-      threat: "Medium"
+      threat: "Medium",
     },
     {
       name: "Projection-5",
@@ -379,8 +410,8 @@ function createPlanets() {
       size: 9,
       distance: 220,
       resources: "Views, Angles",
-      threat: "High"
-    }
+      threat: "High",
+    },
   ];
 
   // Texture loader
@@ -388,7 +419,8 @@ function createPlanets() {
 
   planetData.forEach((data, index) => {
     const geometry = new THREE.SphereGeometry(data.size, 32, 32);
-    
+
+    // Load texture
     const texture = textureLoader.load(data.texture);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
@@ -397,11 +429,11 @@ function createPlanets() {
     const material = new THREE.MeshPhongMaterial({
       map: texture,
       shininess: 30,
-      specular: 0x444444
+      specular: 0x444444,
     });
 
     const basicMaterial = new THREE.MeshBasicMaterial({
-      map: texture
+      map: texture,
     });
 
     const planet = new THREE.Mesh(geometry, material);
@@ -418,7 +450,7 @@ function createPlanets() {
       ...data,
       angle: angle,
       distance: data.distance,
-      rotationSpeed: 0.01 + Math.random() * 0.02
+      rotationSpeed: 0.01 + Math.random() * 0.02,
     };
 
     scene.add(planet);
@@ -547,18 +579,15 @@ function onMouseLook(event) {
   if (document.pointerLockElement === renderer.domElement && !isPuzzleOpen()) {
     cameraRotation.yaw -= event.movementX * cameraRotation.sensitivity;
     cameraRotation.pitch -= event.movementY * cameraRotation.sensitivity;
-    
+
     cameraRotation.pitch = Math.max(
       cameraRotation.minPitch,
       Math.min(cameraRotation.maxPitch, cameraRotation.pitch)
     );
-    
-    camera.quaternion.setFromEuler(new THREE.Euler(
-      cameraRotation.pitch,
-      cameraRotation.yaw,
-      0,
-      'YXZ' 
-    ));
+
+    camera.quaternion.setFromEuler(
+      new THREE.Euler(cameraRotation.pitch, cameraRotation.yaw, 0, "YXZ")
+    );
   }
 }
 
@@ -631,6 +660,7 @@ function onKeyUp(event) {
 }
 
 function updateMovement(deltaTime) {
+  // Don't move if puzzle is open
   if (isPuzzleOpen()) return;
 
   const moveDirection = new THREE.Vector3();
@@ -646,6 +676,7 @@ function updateMovement(deltaTime) {
     moveDirection.normalize();
   }
 
+  // Get camera orientation
   const cameraDirection = new THREE.Vector3();
   camera.getWorldDirection(cameraDirection);
   cameraDirection.y = 0; // Keep movement horizontal (optional)
@@ -654,16 +685,31 @@ function updateMovement(deltaTime) {
   const cameraRight = new THREE.Vector3();
   cameraRight.crossVectors(camera.up, cameraDirection).normalize();
 
+  // Calculate target velocity in world space
   const targetVelocity = new THREE.Vector3();
   targetVelocity.addScaledVector(cameraDirection, moveDirection.z * moveSpeed);
   targetVelocity.addScaledVector(cameraRight, moveDirection.x * moveSpeed);
   targetVelocity.addScaledVector(camera.up, moveDirection.y * moveSpeed);
 
+  // Smoothly interpolate to target velocity
   const acceleration = moveAcceleration * deltaTime;
-  moveVelocity.x = THREE.MathUtils.lerp(moveVelocity.x, targetVelocity.x, acceleration);
-  moveVelocity.y = THREE.MathUtils.lerp(moveVelocity.y, targetVelocity.y, acceleration);
-  moveVelocity.z = THREE.MathUtils.lerp(moveVelocity.z, targetVelocity.z, acceleration);
+  moveVelocity.x = THREE.MathUtils.lerp(
+    moveVelocity.x,
+    targetVelocity.x,
+    acceleration
+  );
+  moveVelocity.y = THREE.MathUtils.lerp(
+    moveVelocity.y,
+    targetVelocity.y,
+    acceleration
+  );
+  moveVelocity.z = THREE.MathUtils.lerp(
+    moveVelocity.z,
+    targetVelocity.z,
+    acceleration
+  );
 
+  // Apply damping when no keys are pressed
   if (moveDirection.length() === 0) {
     moveVelocity.multiplyScalar(1 - moveDamping * deltaTime);
     if (moveVelocity.length() < 0.01) {
@@ -671,6 +717,7 @@ function updateMovement(deltaTime) {
     }
   }
 
+  // Apply movement
   camera.position.addScaledVector(moveVelocity, deltaTime);
 }
 
@@ -692,7 +739,7 @@ function toggleTextureMapping() {
         object.material = originalMaterial;
       } else {
         object.material = new THREE.MeshBasicMaterial({
-          map: originalMaterial.map
+          map: originalMaterial.map,
         });
       }
     } else {
@@ -701,11 +748,11 @@ function toggleTextureMapping() {
         object.material = new THREE.MeshPhongMaterial({
           color: color,
           shininess: originalMaterial.shininess,
-          specular: originalMaterial.specular
+          specular: originalMaterial.specular,
         });
       } else {
         object.material = new THREE.MeshBasicMaterial({
-          color: color
+          color: color,
         });
       }
     }
@@ -773,10 +820,25 @@ function animate() {
 
   updateMovement(deltaTime);
 
+  if (playerSphere) {
+    playerSphere.position.copy(camera.position);
+    playerSphere.position.y -= 2; // Slightly below camera for better visibility
+  }
+
   if (gameId && isPointerLocked) {
     socket.emit("playerMovement", {
-      position: camera.position,
-      rotation: camera.rotation,
+      position: {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+      },
+      rotation: {
+        x: camera.rotation.x,
+        y: camera.rotation.y,
+        z: camera.rotation.z,
+      },
+      playerId: playerId,
+      timestamp: Date.now(),
     });
   }
 
@@ -825,9 +887,11 @@ function createPuzzleGrid(puzzleData) {
 
   const { rows, cols } = puzzleData.gridSize;
 
+  // Set the grid template columns
   grid.style.gridTemplateColumns = `repeat(${cols}, 35px)`;
   grid.style.gridTemplateRows = `repeat(${rows}, 35px)`;
 
+  // Create cells
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const cell = document.createElement("div");
@@ -836,6 +900,7 @@ function createPuzzleGrid(puzzleData) {
     }
   }
 
+  // Fill in the words
   Object.entries(puzzleData.words).forEach(([wordKey, wordData]) => {
     const { word, start, length } = wordData;
     const isAcross = wordKey.includes("across");
@@ -1014,10 +1079,64 @@ function closePuzzle() {
 }
 
 function createOpponent() {
-  const geometry = new THREE.SphereGeometry(1, 16, 16);
-  const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-  opponent = new THREE.Mesh(geometry, material);
+  // Create opponent with more distinct appearance
+  const opponentGeometry = new THREE.SphereGeometry(2, 32, 32);
+  const opponentMaterial = new THREE.MeshPhongMaterial({
+    color: 0xff3333,
+    emissive: 0x880000,
+    shininess: 100,
+    specular: 0x111111,
+  });
+
+  opponent = new THREE.Mesh(opponentGeometry, opponentMaterial);
+  opponent.castShadow = true;
+  opponent.receiveShadow = true;
+
+  // Add glowing effect
+  const glowGeometry = new THREE.SphereGeometry(2.2, 32, 32);
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.3,
+  });
+  const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+  opponent.add(glow);
+
+  // Add name label
+  const nameLabel = createPlayerLabel(opponentName);
+  opponent.add(nameLabel);
+  nameLabel.position.y = 3.5;
+
+  // Ensure opponent is always visible
+  opponent.visible = true;
   scene.add(opponent);
+
+  // Debugging - log opponent visibility
+  setInterval(() => {
+    if (!opponent.visible) {
+      console.warn("Opponent visibility lost - resetting");
+      opponent.visible = true;
+    }
+  }, 1000);
+}
+
+function createPlayerLabel(name) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  context.fillStyle = "rgba(0, 0, 0, 0.7)";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.font = "Bold 40px Arial";
+  context.textAlign = "center";
+  context.fillStyle = "white";
+  context.fillText(name, canvas.width / 2, canvas.height / 2 + 15);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(8, 4, 1);
+  return sprite;
 }
 
 function updateOpponentProgress(progress) {
@@ -1081,24 +1200,30 @@ function showEndScreen(winner, data) {
 }
 
 function restartGame() {
+  // Reset game state
   gameState = {
     planetsScanned: 0,
     completedPlanets: [],
   };
 
+  // Clear completed puzzles
   completedPuzzles.clear();
 
+  // Reset Three.js scene
   if (scene) {
+    // Remove all objects from scene
     while (scene.children.length > 0) {
       scene.remove(scene.children[0]);
     }
 
+    // Clean up renderer
     if (renderer) {
       renderer.dispose();
       document.getElementById("container").removeChild(renderer.domElement);
     }
   }
 
+  // Reset opponent
   opponent = null;
 
   // Hide end screen and show start screen
@@ -1115,6 +1240,7 @@ function restartGame() {
   document.getElementById("playerNameInput").value = "";
   document.getElementById("playerNameInput").focus();
 
+  // Leave current game if exists
   if (gameId) {
     socket.emit("leaveGame", { gameId });
     gameId = null;
