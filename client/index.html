@@ -1,60 +1,89 @@
 <!DOCTYPE html>
-<script src="/socket.io/socket.io.js"></script>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Explorer - Advanced Rendering Demo</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Explorer - Multiplayer</title>
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
+  </head>
+  <body>
     <div id="container">
-        <div id="info">
-            <h3>🚀 Space Explorer</h3>
-            <div class="technique">
-                <strong>Ray Casting:</strong> Planet scanning system
-            </div>
-            <div class="technique">
-                <strong>Texture Mapping:</strong> Planet surfaces & space objects
-            </div>
-            <div class="technique">
-                <strong>Polygon Shading:</strong> Phong shading on all objects
-            </div>
+      <div id="info">
+        <h3>🚀 Space Explorer</h3>
+        <div class="technique">
+          <strong>Ray Casting:</strong> Planet scanning system
         </div>
-        
-        <div id="techniqueToggles">
-            <h3>🔧 Rendering Techniques</h3>
-            <div class="toggle-item active" id="rayCastingToggle">
-                <span>Ray Casting (I)</span>
-                <span class="toggle-status status-on">ON</span>
-            </div>
-            <div class="toggle-item active" id="textureMappingToggle">
-                <span>Texture Mapping (O)</span>
-                <span class="toggle-status status-on">ON</span>
-            </div>
-            <div class="toggle-item active" id="polygonShadingToggle">
-                <span>Polygon Shading (P)</span>
-                <span class="toggle-status status-on">ON</span>
-            </div>
+        <div class="technique">
+          <strong>Texture Mapping:</strong> Planet surfaces & space objects
         </div>
-        
-        <div id="controls">
-            <strong>Controls:</strong><br>
-            WASD - Move<br>
-            Mouse - Look around<br>
-            Click - Scan planet<br>
-            Space - Toggle animation<br>
-            <strong style="color: #ffaa00;">I/O/P - Toggle techniques</strong>
+        <div class="technique">
+          <strong>Polygon Shading:</strong> Phong shading on all objects
         </div>
-        
-        <div id="crosshair"></div>
-        
-        <div id="scanResult">
-            <div id="scanContent"></div>
+      </div>
+
+      <div id="techniqueToggles">
+        <h3>🔧 Rendering Techniques</h3>
+        <div class="toggle-item active" id="rayCastingToggle">
+          <span>Ray Casting (I)</span>
+          <span class="toggle-status status-on">ON</span>
         </div>
+        <div class="toggle-item active" id="textureMappingToggle">
+          <span>Texture Mapping (O)</span>
+          <span class="toggle-status status-on">ON</span>
+        </div>
+        <div class="toggle-item active" id="polygonShadingToggle">
+          <span>Polygon Shading (P)</span>
+          <span class="toggle-status status-on">ON</span>
+        </div>
+      </div>
+
+      <div id="controls">
+        <strong>Controls:</strong><br />
+        WASD - Move<br />
+        Mouse - Look around<br />
+        Click - Scan planet<br />
+        Space - Toggle animation<br />
+        <strong style="color: #ffaa00">I/O/P - Toggle techniques</strong>
+      </div>
+
+      <div id="crosshair"></div>
+
+      <div id="scanResult">
+        <div id="scanContent"></div>
+      </div>
+
+      <div id="playerInfo">
+        <div id="playerName"></div>
+        <div id="opponentName"></div>
+        <div id="playerProgress"></div>
+        <div id="opponentProgress"></div>
+      </div>
+
+      <div id="startScreen">
+        <h1>SPACE EXPLORER</h1>
+        <div id="playerForm">
+          <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="20">
+          <button id="startButton">START GAME</button>
+        </div>
+      </div>
+
+      <div id="endScreen" style="display: none;">
+        <h1 id="endTitle">GAME OVER</h1>
+        <div id="endResults"></div>
+        <button id="restartButton">PLAY AGAIN</button>
+      </div>
+
+      <div id="puzzleModal">
+        <h3 id="puzzleTitle">Complete the Puzzle to Scan Planet!</h3>
+        <div id="puzzleGrid"></div>
+        <div id="puzzleClues"></div>
+        <button onclick="checkPuzzle()">Check Answer</button>
+        <button onclick="closePuzzle()">Close</button>
+      </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="game.js"></script>
-</body>
+  </body>
 </html>
